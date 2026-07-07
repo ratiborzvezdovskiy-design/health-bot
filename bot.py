@@ -170,7 +170,7 @@ def webhook():
     return 'OK', 200
 
 if __name__ == '__main__':
-    WEBHOOK_URL = "https://" + os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'ваш-адрес-после-деплоя.onrender.com') + "/"
+    WEBHOOK_URL = "https://health-bot-4ivh.onrender.com/"
     bot.remove_webhook()
     bot.set_webhook(url=WEBHOOK_URL)
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
