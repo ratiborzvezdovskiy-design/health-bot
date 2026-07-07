@@ -1,4 +1,5 @@
-mport threadingлimport telebot
+import threading
+import telebot
 import threading
 import os
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
