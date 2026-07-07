@@ -162,9 +162,11 @@ def send_book_reminder(chat_id):
     if chat_id in user_sessions:
         del user_sessions[chat_id]
 
-# ВЕБХУК ДЛЯ RENDER
+# ВЕБХУК ДЛЯ RENDER (с обработкой GET-запросов)
 @app.route('/', methods=['GET', 'POST'])
 def webhook():
+    if request.method == 'GET':
+        return "OK", 200
     update = telebot.types.Update.de_json(request.stream.read().decode('utf-8'))
     bot.process_new_updates([update])
     return 'OK', 200
