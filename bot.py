@@ -1,4 +1,6 @@
-import telebot, threading, os
+import telebot
+import threading
+import os
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from flask import Flask, request
 
@@ -27,39 +29,58 @@ def start_quiz(message):
     send_question(chat_id)
 
 def send_question(chat_id):
-    q_data = questions[user_sessions[chat_id]['step']]
+    step = user_sessions[chat_id]['step']
+    q_data = questions[step]
     markup = InlineKeyboardMarkup()
-    for idx, txt in enumerate(q_data['options']):
-        markup.add(InlineKeyboardButton(txt, callback_data=f"q{user_sessions[chat_id]['step']}_{idx}"))
-    bot.send_message(chat_id, f"📋 *Этап {user_sessions[chat_id]['step']+1} из {len(questions)}*\n\n{q_data['text']}", reply_markup=markup, parse_mode='Markdown')
+    for index, option_text in enumerate(q_data['options']):
+        markup.add(InlineKeyboardButton(option_text, callback_data=f"q{step}_{index}"))
+    bot.send_message(chat_id, f"📋 *Этап {step+1} из {len(questions)}*\n\n{q_data['text']}", reply_markup=markup, parse_mode='Markdown')
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_answer(call):
     chat_id = call.message.chat.id
     data = call.data.split('_')
-    q_idx, opt_idx = int(data[0][1:]), int(data[1])
+    q_idx = int(data[0][1:])
+    opt_idx = int(data[1])
+    
     user_sessions[chat_id]['total_score'] += questions[q_idx]['scores'][opt_idx]
     user_sessions[chat_id]['step'] += 1
     bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
+    
     if user_sessions[chat_id]['step'] < len(questions):
         send_question(chat_id)
     else:
         give_result(chat_id, user_sessions[chat_id]['total_score'])
 
 def give_result(chat_id, score):
+    max_score = 24
     book_link = "https://app.lava.top/products/a6f5fdec-4317-4181-8e32-fb9e8850d59d"
-    msg = f"📊 **Ваш результат:** {score} из 24 баллов.\n\n🔬 Краткий анализ организма:\n"
-    if score >= 21: msg += "Ваш организм работает слаженно...\n\n🥗 ...\n\nЕсли вы хотите умножить свой ресурс — попробуйте мои методы в книге «Рецепты наставника Чень».\n\n👉 [Перейти к книге]({book_link})"
-    elif score >= 16: msg += "В целом нормально, но есть зоны напряжения...\n\n🥗 ...\n\nВы уже чувствуете дисбаланс — попробуйте мои методы в книге «Рецепты наставника Чень».\n\n👉 [Перейти к книге]({book_link})"
-    elif score >= 10: msg += "Организм с перегрузкой. Дисбаланс печени, нервной системы...\n\n🥗 ...\n\nВам больше нельзя затягивать — книга даст пошаговую стратегию.\n\n👉 [Перейти к книге]({book_link})"
-    else: msg += "Тело подаёт сигналы SOS. Высокий стресс, хронические боли...\n\nСостояние требует немедленных действий. Книга — ваш спасательный круг.\n\n👉 [Перейти к книге]({book_link})"
+    
+    if score >= 21:
+        msg = f"📊 **Ваш результат:** {score} из {max_score} баллов.\n\n🔬 *Анализ:* Ваш организм работает слаженно.\n\n🥗 *Рацион:* Поддерживайте баланс.\n\n💊 *Добавки:* [Омега-3](https://market.yandex.ru/cc/A4Ysoe) и [Кальций D3](https://market.yandex.ru/cc/A4YVq3) с [Витамином D](https://market.yandex.ru/cc/A4Yyqc).\n\nЕсли вы хотите умножить свой ресурс — попробуйте мои методы в книге «Рецепты наставника Чень».\n\n👉 [Перейти к книге]({book_link})"
+    elif score >= 16:
+        msg = f"📊 **Ваш результат:** {score} из {max_score} баллов.\n\n🔬 *Анализ:* В целом нормально, но есть зоны напряжения.\n\n🥗 *Рацион:* Уберите жирные ужины, добавьте зелень.\n\n💊 *Добавки:* [Витамины группы B](https://market.yandex.ru/cc/A4Wjg6) и [Магний хелат](https://market.yandex.ru/cc/A4Z8Ky) для нервов.\n\nВы уже чувствуете дисбаланс — попробуйте мои методы в книге «Рецепты наставника Чень».\n\n👉 [Перейти к книге]({book_link})"
+    elif score >= 10:
+        msg = f"📊 **Ваш результат:** {score} из {max_score} баллов.\n\n🔬 *Анализ:* Организм с перегрузкой. Дисбаланс печени, нервной системы.\n\n🥗 *Рацион:* Облегчите ЖКТ, исключите фастфуд.\n\n💊 *Добавки:* [Витамин D](https://market.yandex.ru/cc/A4Yyqc), [Пробиотики](https://market.yandex.ru/cc/A4VmgL), [Коллаген](https://market.yandex.ru/cc/9cupUG).\n\nВам больше нельзя затягивать — книга даст пошаговую стратегию.\n\n👉 [Перейти к книге]({book_link})"
+    else:
+        msg = f"📊 **Ваш результат:** {score} из {max_score} баллов.\n\n🔬 *Анализ:* Тело подаёт сигналы SOS. Высокий стресс, хронические боли.\n\n🥗 *Рацион:* Перейдите на лёгкие каши, уберите кофе и сладости.\n\n💊 *Добавки:* [Витамин D](https://market.yandex.ru/cc/A4Yyqc), [Гриб Рейши](https://market.yandex.ru/cc/A4XyPC), [Магний хелат](https://market.yandex.ru/cc/A4Z8Ky).\n\nСостояние требует немедленных действий. Книга — ваш личный спасательный круг.\n\n👉 [Перейти к книге]({book_link})"
+    
     bot.send_message(chat_id, msg, parse_mode='Markdown', disable_web_page_preview=True)
     timer = threading.Timer(3600.0, send_book_reminder, args=[chat_id])
     timer.start()
     user_sessions[chat_id]['timer'] = timer
 
 def send_book_reminder(chat_id):
-    bot.send_message(chat_id, "⏰ Напоминание: книга «Рецепты наставника Чень» уже ждёт вас! В ней 9 глав, ритуалы, акупрессура. Спеццена 300₽.\n\n👉 [Забрать программу](https://app.lava.top/products/a6f5fdec-4317-4181-8e32-fb9e8850d59d)", parse_mode='Markdown')
+    book_link = "https://app.lava.top/products/a6f5fdec-4317-4181-8e32-fb9e8850d59d"
+    bot.send_message(chat_id, 
+        "⏰ **Напоминание о вашем персональном плане здоровья**\n\n"
+        "Час назад вы прошли тест, и мы определили ваши сильные и слабые стороны.\n\n"
+        "Чтобы закрепить результат, у нас есть **книга «Рецепты наставника Чень»**.\n\n"
+        "🧬 9 глав по системам.\n🌿 Ежедневные ритуалы здоровья.\n📍 Атлас акупрессурных точек и самомассаж.\n\n"
+        "🔥 Спеццена — **300 ₽**.\n\n"
+        f"👉 [Забрать программу]({book_link})",
+        parse_mode='Markdown', disable_web_page_preview=True
+    )
     if chat_id in user_sessions: del user_sessions[chat_id]
 
 @app.route('/', methods=['GET', 'POST'])
@@ -72,5 +93,5 @@ def webhook():
 
 if __name__ == '__main__':
     bot.remove_webhook()
-    bot.set_webhook("https://health-bot-4ivh.onrender.com/")
+    bot.set_webhook(url="https://health-bot-4ivh.onrender.com/")
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
