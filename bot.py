@@ -212,3 +212,28 @@ if __name__ == '__main__':
     bot.remove_webhook()
     bot.set_webhook(url=WEBHOOK_URL)
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
+    # ====================
+# ШАГ 2: ПОКАЗ КНИГИ ПОСЛЕ НАЖАТИЯ КНОПКИ
+# ====================
+@bot.callback_query_handler(func=lambda call: call.data == "show_book")
+def show_book(call):
+    chat_id = call.message.chat.id
+    
+    # Убираем кнопку после нажатия
+    bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
+    
+    book_link = "https://app.lava.top/products/a6f5fdec-4317-4181-8e32-fb9e8850d59d"
+    book_text = (
+        "📖 Именно для этого в книге **«Рецепты наставника Чень»** я собрал пошаговые протоколы, как мягко вывести организм из накопленного напряжения, вернуть ему лёгкость и спокойствие.\n\n"
+        "Вы получите не просто книгу, а **пошаговый план действий именно для вашего состояния**.\n\n"
+        f"👉 [Получить доступ]({book_link})"
+    )
+    
+    # ОТПРАВЛЯЕМ КАРТИНКУ + ТЕКСТ
+    try:
+        photo = open('book_cover.jpg', 'rb')
+        bot.send_photo(chat_id, photo, caption=book_text, parse_mode='Markdown')
+        photo.close()
+    except:
+        # Если картинка не найдена, отправляем просто текст
+        bot.send_message(chat_id, book_text, parse_mode='Markdown')
