@@ -4,7 +4,7 @@ import os
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from flask import Flask, request
 
-TOKEN = '8766262206:AAEDRa3bnluKb4vQajFV7dnfMZ0_ahq_Pvs'
+TOKEN = os.environ.get('BOT_TOKEN')
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
@@ -69,7 +69,7 @@ def send_question(chat_id):
         markup.add(InlineKeyboardButton(option_text, callback_data=f"q{step}_{index}"))
     bot.send_message(chat_id, f"📋 *Этап {step+1} из {len(questions)}*\n\n{q_data['text']}", reply_markup=markup, parse_mode='Markdown')
 
-@bot.callback_query_handler(func=lambda call: True)
+@bot.callback_query_handler(func=lambda call: call.data.startswith('q') and '_' in call.data and call.data.split('_')[0][1:].isdigit())
 def handle_answer(call):
     chat_id = call.message.chat.id
     data = call.data.split('_')
@@ -158,7 +158,7 @@ def show_book(call):
         f"[Получить доступ]({book_link})"
     )
     
-    bot.send_message(chat_id, book_text, parse_mode='Markdown')
+    bot.send_photo(chat_id, photo=open('book_cover.jpg', 'rb'), caption=book_text, parse_mode='Markdown')
 
     timer = threading.Timer(3600.0, send_book_reminder, args=[chat_id])
     timer.start()
