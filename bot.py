@@ -197,7 +197,7 @@ def webhook():
     return 'OK', 200
 
 if __name__ == '__main__':
-    WEBHOOK_URL = "https://health-bot-production-d973.up.railway.app/"
+    WEBHOOK_URL = "https://health-bot-production-a524.up.railway.app/"
     bot.remove_webhook()
     bot.set_webhook(url=WEBHOOK_URL)
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
