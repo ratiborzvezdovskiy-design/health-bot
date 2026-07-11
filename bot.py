@@ -1,11 +1,48 @@
 import telebot
 import os
+import sqlite3
+import threading
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from flask import Flask, request
 
 TOKEN = os.environ.get('TELEGRAM_TOKEN')
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
+
+# ====================
+# ЛОГИРОВАНИЕ / СТАТИСТИКА (SQLite)
+# ====================
+DB_PATH = 'bot_stats.db'
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER,
+            event_type TEXT,
+            event_value TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def log_event(chat_id, event_type, event_value=None):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute(
+            'INSERT INTO events (chat_id, event_type, event_value) VALUES (?, ?, ?)',
+            (chat_id, event_type, str(event_value) if event_value is not None else None)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[log_event error] {e}")
+
+init_db()
 
 # ====================
 # 8 ВОПРОСОВ
@@ -46,6 +83,7 @@ supplement_links = {
 @bot.message_handler(commands=['start'])
 def start_quiz(message):
     chat_id = message.chat.id
+    log_event(chat_id, 'start')
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("Начать", callback_data="start_test"))
     
@@ -91,12 +129,14 @@ def handle_answer(call):
     
     user_sessions[chat_id]['total_score'] += questions[q_idx]['scores'][opt_idx]
     user_sessions[chat_id]['step'] += 1
+    log_event(chat_id, 'question_answered', q_idx + 1)
     bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
     
     if user_sessions[chat_id]['step'] < len(questions):
         send_question(chat_id)
     else:
         final_score = user_sessions[chat_id]['total_score']
+        log_event(chat_id, 'quiz_completed', final_score)
         give_result(chat_id, final_score)
 
 # ====================
@@ -159,6 +199,7 @@ def give_result(chat_id, score):
 @bot.callback_query_handler(func=lambda call: call.data == "show_book")
 def show_book(call):
     chat_id = call.message.chat.id
+    log_event(chat_id, 'show_book_click')
     
     bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
     
@@ -171,8 +212,35 @@ def show_book(call):
     
     bot.send_photo(chat_id, photo=open('book_cover.jpg', 'rb'), caption=book_text, parse_mode='Markdown')
 
+    timer = threading.Timer(3600.0, send_book_reminder, args=[chat_id])
+    timer.start()
+    if chat_id in user_sessions:
+        user_sessions[chat_id]['timer'] = timer
+
+# ====================
+# НАПОМИНАНИЕ ЧЕРЕЗ ЧАС
+# ====================
+def send_book_reminder(chat_id):
+    book_link = "https://app.lava.top/products/a6f5fdec-4317-4181-8e32-fb9e8850d59d"
+    reminder_caption = (
+        "💬 Вот что написала Валентина о своих результатах.\n"
+        "✨ Это только начало."
+    )
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("Перейти к книге", callback_data="reminder_book_click"))
+    
+    bot.send_photo(chat_id, photo=open('review_screenshot.jpg', 'rb'), caption=reminder_caption, reply_markup=markup)
     if chat_id in user_sessions:
         del user_sessions[chat_id]
+
+@bot.callback_query_handler(func=lambda call: call.data == "reminder_book_click")
+def reminder_book_click(call):
+    chat_id = call.message.chat.id
+    log_event(chat_id, 'reminder_book_click')
+    bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
+    
+    book_link = "https://app.lava.top/products/a6f5fdec-4317-4181-8e32-fb9e8850d59d"
+    bot.send_message(chat_id, f"👉 [Перейти к книге]({book_link})", parse_mode='Markdown', disable_web_page_preview=True)
 
 # ====================
 # WEBHOOK
