@@ -203,19 +203,29 @@ def show_book(call):
     
     bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
     
-    book_link = "https://app.lava.top/products/a6f5fdec-4317-4181-8e32-fb9e8850d59d"
     book_text = (
         "📖 Именно для этого в книге **«Рецепты наставника Чень»** я собрал пошаговые протоколы, как мягко вывести организм из накопленного напряжения, вернуть ему лёгкость и спокойствие.\n\n"
-        "Вы получите не просто книгу, а **пошаговый план действий именно для вашего состояния**.\n\n"
-        f"[Получить доступ]({book_link})"
+        "Вы получите не просто книгу, а **пошаговый план действий именно для вашего состояния**."
     )
     
-    bot.send_photo(chat_id, photo=open('book_cover.jpg', 'rb'), caption=book_text, parse_mode='Markdown')
+    book_markup = InlineKeyboardMarkup()
+    book_markup.add(InlineKeyboardButton("Получить доступ", callback_data="get_book_link"))
+    
+    bot.send_photo(chat_id, photo=open('book_cover.jpg', 'rb'), caption=book_text, parse_mode='Markdown', reply_markup=book_markup)
 
     timer = threading.Timer(3600.0, send_book_reminder, args=[chat_id])
     timer.start()
     if chat_id in user_sessions:
         user_sessions[chat_id]['timer'] = timer
+
+@bot.callback_query_handler(func=lambda call: call.data == "get_book_link")
+def get_book_link(call):
+    chat_id = call.message.chat.id
+    log_event(chat_id, 'get_book_link_click')
+    bot.answer_callback_query(call.id)
+    
+    book_link = "https://app.lava.top/products/a6f5fdec-4317-4181-8e32-fb9e8850d59d"
+    bot.send_message(chat_id, f"👉 [Получить доступ к книге]({book_link})", parse_mode='Markdown', disable_web_page_preview=True)
 
 # ====================
 # НАПОМИНАНИЕ ЧЕРЕЗ ЧАС
