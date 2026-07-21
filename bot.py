@@ -18,7 +18,10 @@ LAVA_LINK = "https://app.lava.top/products/a6f5fdec-4317-4181-8e32-fb9e8850d59d"
 # ====================
 # ЛОГИРОВАНИЕ / СТАТИСТИКА (SQLite)
 # ====================
-DB_PATH = 'bot_stats.db'
+# Путь к базе теперь указывает на примонтированный Railway Volume (/data),
+# который не стирается при редеплоях. Можно переопределить через переменную
+# окружения DB_PATH, если понадобится.
+DB_PATH = os.environ.get('DB_PATH', '/data/bot_stats.db')
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
