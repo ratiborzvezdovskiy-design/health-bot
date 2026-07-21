@@ -13,7 +13,7 @@ app = Flask(__name__)
 # БАЗОВЫЕ ССЫЛКИ
 # ====================
 BASE_URL = "https://health-bot-production-a524.up.railway.app"
-LAVA_LINK = "https://app.lava.top/products/a6f5fdec-4317-4181-8e32-fb9e8850d59d"
+LAVA_LINK = "https://nastavnikchen.lovable.app/"
 
 # ====================
 # ЛОГИРОВАНИЕ / СТАТИСТИКА (SQLite)
