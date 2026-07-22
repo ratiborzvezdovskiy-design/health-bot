@@ -2,12 +2,17 @@ import telebot
 import os
 import sqlite3
 import threading
+import time
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from flask import Flask, request, redirect
 
 TOKEN = os.environ.get('TELEGRAM_TOKEN')
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
+
+# ID администратора — единственный, кто может запускать рассылку.
+# Можно переопределить через переменную окружения ADMIN_ID в Railway.
+ADMIN_ID = int(os.environ.get('ADMIN_ID', '297418790'))
 
 # ====================
 # БАЗОВЫЕ ССЫЛКИ
@@ -122,6 +127,35 @@ def start_quiz(message):
 
     bot.send_message(chat_id, welcome_text, reply_markup=markup, parse_mode='Markdown')
     user_sessions[chat_id] = {'step': -1, 'total_score': 0}
+
+@bot.message_handler(commands=['broadcast'])
+def broadcast(message):
+    if message.chat.id != ADMIN_ID:
+        return  # игнорируем всех, кроме админа
+
+    text = message.text.replace('/broadcast', '', 1).strip()
+    if not text:
+        bot.send_message(message.chat.id, "Использование: /broadcast Текст сообщения")
+        return
+
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT DISTINCT chat_id FROM events')
+    chat_ids = [row[0] for row in c.fetchall()]
+    conn.close()
+
+    bot.send_message(message.chat.id, f"Начинаю рассылку на {len(chat_ids)} получателей...")
+
+    sent, failed = 0, 0
+    for cid in chat_ids:
+        try:
+            bot.send_message(cid, text, parse_mode='Markdown')
+            sent += 1
+        except Exception as e:
+            failed += 1
+        time.sleep(0.05)  # чтобы не упереться в лимиты Telegram
+
+    bot.send_message(message.chat.id, f"Рассылка завершена.\nОтправлено: {sent}\nНе доставлено: {failed}")
 
 @bot.callback_query_handler(func=lambda call: call.data == "start_test")
 def start_test(call):
