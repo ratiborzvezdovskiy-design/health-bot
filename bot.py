@@ -59,7 +59,25 @@ def log_event(chat_id, event_type, event_value=None):
 init_db()
 
 # ====================
-# 8 ВОПРОСОВ
+# АВТОБЭКАП БАЗЫ (раз в сутки отправляет файл базы админу в Telegram)
+# ====================
+def send_backup():
+    try:
+        if os.path.exists(DB_PATH):
+            with open(DB_PATH, 'rb') as f:
+                bot.send_document(
+                    ADMIN_ID, f,
+                    caption=f"🗄 Автобэкап базы данных ({time.strftime('%Y-%m-%d %H:%M')})"
+                )
+    except Exception as e:
+        print(f"[backup error] {e}")
+
+def backup_loop():
+    while True:
+        send_backup()
+        time.sleep(24 * 60 * 60)  # раз в 24 часа
+
+threading.Thread(target=backup_loop, daemon=True).start()
 # ====================
 questions = [
     {"text": "Вопрос 1. Как часто у вас бывают головные боли, чувство тяжести в голове или «туман» сознания?",
